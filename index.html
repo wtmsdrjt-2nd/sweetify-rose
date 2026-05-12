@@ -559,16 +559,17 @@
                 <div style="font-weight: bold; margin-bottom: 15px;">Credits</div>
                 <div class="credits-row"><div class="credits-role">Rose</div><div class="credits-name">Main Artist</div></div>
                 <div class="credits-row"><div class="credits-role">Owl</div><div class="credits-name">Composer • Producer • Developer</div></div>
-                <div class="credits-row"><div class="credits-role">Sweetify</div><div class="credits-name">Specially built for Rose</div></div>
+                <div class="credits-row"><div class="credits-role">Sweetify</div><div class="credits-name">Specially built for Rose ❤️</div></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // ------------------------------
-    // FULL SONG GUARANTEE: improved sync & no cutoff
-    // ------------------------------
+    // ======================= FULL SONG FIX =======================
+    // Memastikan audio bisa diputar dari awal hingga akhir tanpa terpotong.
+    // Semua fitur lirik, progress bar, dan kontrol tetap berfungsi sempurna.
+    
     const lyricsData = [
         { time: 18.51, text: "Wanting your love to come into me" },
         { time: 23.11, text: "Feeling it slow, over this dream" },
@@ -630,7 +631,7 @@
 
     let lyricElements = [];
 
-    // build lyrics UI
+    // Build lyrics UI
     lyricsData.forEach((lyric, idx) => {
         const el = document.createElement('div');
         el.className = 'lyric-line';
@@ -648,7 +649,7 @@
         lyricElements.push(el);
     });
 
-    // --- helper: get active lyric index based on current time (current lyric, not next) ---
+    // Helper: ambil index lirik aktif berdasarkan currentTime
     function getCurrentLyricIndex(currentTime) {
         if (!lyricsData.length) return 0;
         let activeIdx = 0;
@@ -662,16 +663,14 @@
         return activeIdx;
     }
 
-    // update UI: preview highlight + scroll
+    // Update lirik & scrolling
     function updateLyricsUI(currentTime) {
         const activeIndex = getCurrentLyricIndex(currentTime);
-        // update preview line (current lyric)
         if (lyricsData[activeIndex]) {
             singleLyricPreview.innerText = lyricsData[activeIndex].text;
         } else {
-            singleLyricPreview.innerText = "✦ heavenly flow ✦";
+            singleLyricPreview.innerText = "✨ Heavenly ✨";
         }
-        // update active class on lyrics
         lyricElements.forEach((el, idx) => {
             if (idx === activeIndex) {
                 el.classList.add('active');
@@ -679,7 +678,6 @@
                 el.classList.remove('active');
             }
         });
-        // auto-scroll to active lyric (smooth, centered)
         const activeEl = lyricElements[activeIndex];
         if (activeEl && lyricsContainer) {
             const containerRect = lyricsContainer.getBoundingClientRect();
@@ -689,58 +687,66 @@
         }
     }
 
-    // audio timeupdate: sync progress, lyrics, time displays
-    function onTimeUpdate() {
-        if (!audio) return;
-        const current = audio.currentTime;
-        const dur = audio.duration;
-        if (!isNaN(dur) && dur > 0) {
-            const percent = (current / dur) * 100;
-            progressFill.style.width = percent + '%';
-        }
-        currentTimeEl.innerText = formatTime(current);
-        // update lyrics based on real playback (smooth + accurate)
-        updateLyricsUI(current);
-    }
-
+    // Format waktu
     function formatTime(sec) {
-        if (isNaN(sec)) return "0:00";
+        if (isNaN(sec) || !isFinite(sec)) return "0:00";
         const mins = Math.floor(sec / 60);
         const seconds = Math.floor(sec % 60);
         return `${mins}:${seconds < 10 ? '0' : ''}${seconds}`;
     }
 
-    // when metadata loads, set duration and also check if song length > last lyric -> ensure full coverage
+    // Event ketika metadata audio sudah dimuat - pastikan durasi penuh
     function onLoadedMetadata() {
         const dur = audio.duration;
-        if (!isNaN(dur) && dur > 0) {
+        if (!isNaN(dur) && dur > 0 && isFinite(dur)) {
             durationTimeEl.innerText = formatTime(dur);
-            // EXTRA: if last lyric timestamp is way before duration, we keep last lyric active (no cutoff)
-            const lastLyricTime = lyricsData[lyricsData.length-1]?.time || 0;
-            if (dur > lastLyricTime + 1) {
-                // song is longer, but we don't cut anything: final lyric remains active after last timestamp
-                // just a console info — UI will keep last lyric active after last timestamp
-                console.log(`ℹ️ Song duration (${dur}s) longer than lyrics data. Final lyric will stay active. Full playthrough guaranteed.`);
-            }
+            console.log(`✅ Durasi lagu terdeteksi: ${dur} detik — lagu akan diputar penuh.`);
+        } else {
+            console.warn("⚠️ Durasi belum terbaca, coba reload.");
+            durationTimeEl.innerText = "0:00";
         }
-        // preview initial lyric at t=0
-        updateLyricsUI(0);
+        updateLyricsUI(audio.currentTime || 0);
     }
 
-    // end of song: keep last lyric active, reset buttons state
+    // Update progress bar & lirik saat play
+    function onTimeUpdate() {
+        if (!audio) return;
+        const current = audio.currentTime;
+        const dur = audio.duration;
+        if (!isNaN(dur) && dur > 0 && isFinite(dur)) {
+            const percent = (current / dur) * 100;
+            progressFill.style.width = percent + '%';
+        }
+        currentTimeEl.innerText = formatTime(current);
+        updateLyricsUI(current);
+    }
+
+    // Ketika lagu benar-benar selesai (full)
     function onAudioEnded() {
         iconPlay.style.display = 'block';
         iconPause.style.display = 'none';
         if (bgVideo) bgVideo.pause();
-        // show last lyric as final
-        updateLyricsUI(audio.duration);
-        singleLyricPreview.innerText = lyricsData[lyricsData.length-1]?.text || "✦ forever yours ✦";
+        // Tampilkan lirik terakhir sebagai sentuhan akhir
+        if (lyricsData.length) {
+            singleLyricPreview.innerText = lyricsData[lyricsData.length-1].text + " ❤️";
+            lyricElements[lyricsData.length-1]?.classList.add('active');
+        }
+        console.log("🏁 Lagu selesai diputar penuh hingga akhir.");
     }
 
-    // setup event listeners for full, unrestricted playback
+    // Error handling: jika audio gagal dimuat, beri tahu user (opsional)
+    function onAudioError(e) {
+        console.error("❌ Error pada audio:", e);
+        alert("Gagal memuat lagu. Pastikan file 'lagu.mp3' tersedia dan tidak rusak.");
+    }
+
+    // Pastikan audio tidak terhenti oleh event lain
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('ended', onAudioEnded);
+    audio.addEventListener('error', onAudioError);
+    
+    // Sinkronisasi tombol play/pause & video background
     audio.addEventListener('play', () => {
         iconPlay.style.display = 'none';
         iconPause.style.display = 'block';
@@ -752,23 +758,23 @@
         if (bgVideo && !bgVideo.paused) bgVideo.pause();
     });
 
-    // progress bar seeking (ensuring full play)
+    // Klik progress bar untuk seeking
     if (progressBg) {
         progressBg.addEventListener('click', (e) => {
             const rect = progressBg.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const width = rect.width;
             const percentage = clickX / width;
-            if (audio.duration) {
+            if (audio.duration && isFinite(audio.duration)) {
                 audio.currentTime = percentage * audio.duration;
             }
         });
     }
 
-    // play/pause button logic
+    // Tombol play/pause utama
     playBtn.addEventListener('click', () => {
         if (audio.paused) {
-            audio.play().catch(err => console.warn("autoplay blocked, user gesture needed", err));
+            audio.play().catch(err => console.warn("Autoplay butuh interaksi user", err));
             if (bgVideo) bgVideo.play().catch(e=>console.log);
         } else {
             audio.pause();
@@ -776,48 +782,50 @@
         }
     });
 
-    // splash screen transition
+    // Splash screen (3 detik)
     setTimeout(() => {
         splash.classList.add('hidden');
         setTimeout(() => splash.style.display = 'none', 500);
         homeScreen.classList.add('active');
-        // preload audio duration metadata without playing
-        audio.load();
+        audio.load(); // reload metadata agar durasi fix
     }, 3000);
 
-    // global functions for navigation
+    // Global functions
     window.wrongSong = function() {
         alert("Eits, bukan yang ini. Cari lagu 'This Made for u ❤️' ya!");
     };
+    
     window.openPlayer = function() {
         homeScreen.classList.remove('active');
         playerScreen.classList.add('active');
-        // ensure video and audio can start (we respect gesture but user clicked)
+        // Mulai play dengan user gesture (karena tombol diklik)
         const playPromise = audio.play();
         if (bgVideo) {
-            bgVideo.play().catch(e => console.log("bg video muted autoplay allowed"));
+            bgVideo.play().catch(e => console.log("video muted autoplay"));
         }
         if (playPromise !== undefined) {
             playPromise.catch(error => {
-                console.log("Browser blocked auto-play, but UI ready for manual tap");
+                console.log("Browser block autoplay, tapi user bisa tekan play manual.");
+                // Ikon tetap menunjukkan pause? tidak masalah, user tinggal klik play.
+                iconPlay.style.display = 'block';
+                iconPause.style.display = 'none';
             });
         }
-        // force initial lyrics sync
+        // Pastikan lirik sesuai posisi lagu saat ini
         updateLyricsUI(audio.currentTime);
     };
+    
     window.closePlayer = function() {
-        audio.pause();
+        audio.pause();      // pause tapi tidak reset waktu, biar lanjut nanti
         if (bgVideo) bgVideo.pause();
         playerScreen.classList.remove('active');
         homeScreen.classList.add('active');
-        // reset icon state visually
         iconPlay.style.display = 'block';
         iconPause.style.display = 'none';
     };
-
-    // edge: pre-fill duration if already loaded
+    
+    // Inisialisasi awal
     if (audio.readyState >= 1) onLoadedMetadata();
-    // set initial preview
     updateLyricsUI(0);
 </script>
 </body>
