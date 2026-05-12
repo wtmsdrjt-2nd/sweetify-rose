@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sweetify Sync Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: white; padding: 20px; }
+        textarea { width: 100%; height: 150px; margin-bottom: 10px; background: #282828; color: white; border: none; padding: 10px; border-radius: 8px; }
+        button { border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; border-radius: 50px; margin-right: 5px; margin-bottom: 10px; transition: 0.2s;}
+        button:hover { opacity: 0.8; }
+        #startBtn { background: #1DB954; color: white; }
+        #syncBtn { background: #ffffff; color: black; }
+        #syncBtn:disabled { background: #555; color: #888; cursor: not-allowed; }
+        #resetBtn { background: #E91429; color: white; } /* Warna merah biar gampang diliat */
+        #currentLine { font-size: 24px; color: #1DB954; margin: 20px 0; font-weight: bold; }
+        pre { background: #000; padding: 15px; overflow-x: auto; color: #0f0; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <h2>🛠️ Sweetify Sync Tool</h2>
+    
+    <label>1. Pilih Lagu (MP3):</label><br><br>
+    <input type="file" id="audioFile" accept="audio/*"><br><br>
+    <audio id="audioPlayer" controls></audio><br><br>
+
+    <label>2. Paste Lirik Mentah di sini (tiap baris 1 lirik):</label>
+    <textarea id="lyricsInput" placeholder="Contoh:&#10;And when you smile...&#10;The whole world stops..."></textarea>
+
+    <div>
+        <button id="startBtn">Mulai Sync</button>
+        <button id="syncBtn" disabled>Tap / Enter (Baris Selanjutnya)</button>
+        <button id="resetBtn">Reset Ulang</button>
+    </div>
+
+    <div id="currentLine">Siap di-sync...</div>
+    
+    <h3>3. Hasil JSON:</h3>
+    <pre id="jsonOutput">[]</pre>
+
+    <script>
+        let lyrics = [];
+        let currentIndex = 0;
+        let syncedData = [];
+        
+        const audioFile = document.getElementById('audioFile');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const lyricsInput = document.getElementById('lyricsInput');
+        const startBtn = document.getElementById('startBtn');
+        const syncBtn = document.getElementById('syncBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const currentLineDisplay = document.getElementById('currentLine');
+        const jsonOutput = document.getElementById('jsonOutput');
+
+        // Load Audio
+        audioFile.addEventListener('change', function() {
+            const file = this.files[0];
+            if(file) {
+                audioPlayer.src = URL.createObjectURL(file);
+            }
+        });
+
+        // Mulai Sinkronisasi
+        startBtn.addEventListener('click', () => {
+            const rawText = lyricsInput.value.trim();
+            if(!rawText || !audioPlayer.src) return alert("Pilih lagu dan masukin lirik dulu bro!");
+            
+            lyrics = rawText.split('\n').filter(line => line.trim() !== "");
+            currentIndex = 0;
+            syncedData = [];
+            
+            syncBtn.disabled = false;
+            currentLineDisplay.innerText = "Standby: " + lyrics[0];
+            
+            audioPlayer.currentTime = 0; // Pastiin mulai dari awal
+            audioPlayer.play();
+        });
+
+        // Rekam Waktu
+        function recordTime() {
+            if (currentIndex < lyrics.length) {
+                // Ambil detik saat ini, potong jadi 2 desimal aja biar rapi
+                const currentTime = parseFloat(audioPlayer.currentTime.toFixed(2));
+                syncedData.push({ time: currentTime, text: lyrics[currentIndex].trim() });
+                
+                currentIndex++;
+                
+                if (currentIndex < lyrics.length) {
+                    currentLineDisplay.innerText = "Next: " + lyrics[currentIndex];
+                } else {
+                    currentLineDisplay.innerText = "Selesai!";
+                    syncBtn.disabled = true;
+                    audioPlayer.pause();
+                }
+                
+                // Update tampilan JSON
+                jsonOutput.innerText = JSON.stringify(syncedData, null, 2);
+            }
+        }
+
+        // Tombol Reset
+        resetBtn.addEventListener('click', () => {
+            audioPlayer.pause();
+            audioPlayer.currentTime = 0;
+            currentIndex = 0;
+            syncedData = [];
+            syncBtn.disabled = true;
+            
+            const rawText = lyricsInput.value.trim();
+            if (rawText) {
+                lyrics = rawText.split('\n').filter(line => line.trim() !== "");
+                currentLineDisplay.innerText = "Siap di-sync ulang: " + lyrics[0];
+            } else {
+                currentLineDisplay.innerText = "Siap di-sync...";
+            }
+            
+            jsonOutput.innerText = "[]";
+        });
+
+        // Event Listener buat klik dan keyboard
+        syncBtn.addEventListener('click', recordTime);
+        
+        // Pake Enter biar lebih enak pas dengerin lagu
+        document.addEventListener('keydown', (e) => {
+            // Mencegah spasi ngetrigger tombol kalau lagi fokus di textarea
+            if (document.activeElement === lyricsInput) return;
+            
+            if (e.key === 'Enter' && !syncBtn.disabled) {
+                e.preventDefault(); // Biar halaman ga scroll
+                recordTime();
+            }
+        });
+    </script>
+</body>
+</html>
